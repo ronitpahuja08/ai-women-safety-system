@@ -10,6 +10,7 @@ import os
 import re
 import threading
 import time
+from dataclasses import dataclass
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.error import HTTPError, URLError
@@ -21,6 +22,14 @@ ALERT_COOLDOWN_SECONDS = 60
 lock = threading.Lock()
 last_delivery_attempt = 0.0
 MAX_BYTES = 2048
+
+
+@dataclass(frozen=True)
+class SmsConfiguration:
+    account_sid: str
+    auth_token: str
+    sender: str
+    receiver: str
 
 
 def parse_port(value):
@@ -73,7 +82,7 @@ def configured_sms():
         raise ValueError("Invalid Twilio account SID")
     if not all(re.fullmatch(r"\+[1-9]\d{7,14}", phone) for phone in (sender, receiver)):
         raise ValueError("Both configured phone numbers must be E.164 format")
-    return sid, token, sender, receiver
+    return SmsConfiguration(sid, token, sender, receiver)
 
 
 def sms_mode():
@@ -86,10 +95,9 @@ def sms_mode():
 
 def send_sms(message, config, opener=urlopen):
     """Delivery is attempted, not guaranteed; Twilio status must be monitored."""
-    sid, token, sender, receiver = config
-    uri = f"https://api.twilio.com/2010-04-01/Accounts/{sid}/Messages.json"
-    body = urlencode({"To": receiver, "From": sender, "Body": message}).encode()
-    credentials = base64.b64encode(f"{sid}:{token}".encode()).decode()
+    uri = f"https://api.twilio.com/2010-04-01/Accounts/{config.account_sid}/Messages.json"
+    body = urlencode({"To": config.receiver, "From": config.sender, "Body": message}).encode()
+    credentials = base64.b64encode(f"{config.account_sid}:{config.auth_token}".encode()).decode()
     request = Request(
         uri, data=body,
         headers={"Authorization": f"Basic {credentials}",

@@ -45,9 +45,14 @@ class SafetyPrototypeTests(unittest.TestCase):
         def fake_open(req, timeout):
             request_seen.append((req, timeout))
             return Response()
-        outcome = app.send_sms("SOS!", (sid, "secret", "+15551234567", "+15557654321"), fake_open)
+        outcome = app.send_sms("SOS!", app.SmsConfiguration(sid, "secret", "+15551234567", "+15557654321"), fake_open)
         self.assertEqual(outcome["status"], "submitted_to_provider")
         self.assertEqual(parse_qs(request_seen[0][0].data.decode())["Body"], ["SOS!"])
+
+    def test_sms_configuration_is_immutable(self):
+        config = app.SmsConfiguration("AC" + "a" * 32, "secret", "+15551234567", "+15557654321")
+        with self.assertRaises(AttributeError):
+            config.sender = "+15550000000"
 
     def test_misconfigured_sms_is_distinguished_from_demo(self):
         import os
