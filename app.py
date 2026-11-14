@@ -124,6 +124,16 @@ def sms_mode():
         return "misconfigured"
 
 
+def runtime_status():
+    """Return non-sensitive runtime readiness for the local user interface."""
+    mode = sms_mode()
+    return {
+        "mode": mode,
+        "sms_configured": mode == "configured",
+        "warning": "Not an emergency service. Delivery is never guaranteed.",
+    }
+
+
 def send_sms(message, config, opener=urlopen):
     """Delivery is attempted, not guaranteed; Twilio status must be monitored."""
     uri = f"https://api.twilio.com/2010-04-01/Accounts/{config.account_sid}/Messages.json"
@@ -158,10 +168,11 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         path = self.path.split("?", 1)[0]
         if path == "/api/status":
-            mode = sms_mode()
-            self.json_response(200, {"mode": mode,
-                                     "sms_configured": mode == "configured",
-                                     "warning": "Not an emergency service. Delivery is never guaranteed."})
+            self.json_response(200, runtime_status())
+            return
+        if path == "/api/healthz":
+            status = runtime_status()
+            self.json_response(200, {"status": "ok", "mode": status["mode"]})
             return
         assets = {"/": ("index.html", "text/html; charset=utf-8"),
                   "/index.html": ("index.html", "text/html; charset=utf-8"),

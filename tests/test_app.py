@@ -87,6 +87,16 @@ class SafetyPrototypeTests(unittest.TestCase):
         with patch.dict(os.environ, {}, clear=True):
             self.assertEqual(app.sms_mode(), "demo")
 
+    def test_runtime_status_never_includes_provider_credentials(self):
+        import os
+        from unittest.mock import patch
+        with patch.dict(os.environ, {}, clear=True):
+            status = app.runtime_status()
+        self.assertEqual(status["mode"], "demo")
+        self.assertFalse(status["sms_configured"])
+        self.assertIn("not an emergency service", status["warning"].lower())
+        self.assertNotIn("token", str(status).lower())
+
 
 if __name__ == "__main__":
     unittest.main()
