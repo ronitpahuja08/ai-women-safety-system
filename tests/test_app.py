@@ -97,6 +97,13 @@ class SafetyPrototypeTests(unittest.TestCase):
         self.assertIn("not an emergency service", status["warning"].lower())
         self.assertNotIn("token", str(status).lower())
 
+    def test_security_headers_protect_static_and_api_responses(self):
+        headers = app.security_headers("application/json", 42)
+        self.assertEqual(headers["Content-Length"], "42")
+        self.assertEqual(headers["X-Frame-Options"], "DENY")
+        self.assertEqual(headers["Referrer-Policy"], "no-referrer")
+        self.assertIn("geolocation", headers["Permissions-Policy"])
+
 
 if __name__ == "__main__":
     unittest.main()

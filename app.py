@@ -134,6 +134,20 @@ def runtime_status():
     }
 
 
+def security_headers(content_type, content_length):
+    """Build consistent browser protections for API and static responses."""
+    return {
+        "Content-Type": content_type,
+        "Cache-Control": "no-store",
+        "X-Content-Type-Options": "nosniff",
+        "X-Frame-Options": "DENY",
+        "Referrer-Policy": "no-referrer",
+        "Permissions-Policy": "geolocation=(self)",
+        "Content-Security-Policy": "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'",
+        "Content-Length": str(content_length),
+    }
+
+
 def send_sms(message, config, opener=urlopen):
     """Delivery is attempted, not guaranteed; Twilio status must be monitored."""
     uri = f"https://api.twilio.com/2010-04-01/Accounts/{config.account_sid}/Messages.json"
@@ -156,12 +170,8 @@ class Handler(BaseHTTPRequestHandler):
     def json_response(self, status, body):
         payload = json.dumps(body).encode()
         self.send_response(status)
-        self.send_header("Content-Type", "application/json; charset=utf-8")
-        self.send_header("Cache-Control", "no-store")
-        self.send_header("X-Content-Type-Options", "nosniff")
-        self.send_header("X-Frame-Options", "DENY")
-        self.send_header("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'")
-        self.send_header("Content-Length", str(len(payload)))
+        for name, value in security_headers("application/json; charset=utf-8", len(payload)).items():
+            self.send_header(name, value)
         self.end_headers()
         self.wfile.write(payload)
 
@@ -184,10 +194,8 @@ class Handler(BaseHTTPRequestHandler):
         name, mime = assets[path]
         data = (ROOT / "web" / name).read_bytes()
         self.send_response(200)
-        self.send_header("Content-Type", mime)
-        self.send_header("Cache-Control", "no-store")
-        self.send_header("X-Content-Type-Options", "nosniff")
-        self.send_header("Content-Length", str(len(data)))
+        for header_name, value in security_headers(mime, len(data)).items():
+            self.send_header(header_name, value)
         self.end_headers()
         self.wfile.write(data)
 
