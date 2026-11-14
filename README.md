@@ -43,6 +43,9 @@ The backend requests a message via Twilio; **a 202 response means Twilio accepte
 - Browser check-in reminders are not guaranteed if the device sleeps, the tab closes, or connectivity fails.
 - In urgent danger, **call local emergency services directly** and use other trusted channels.
 
+See [Operational Safety Notes](OPERATIONAL_SAFETY.md) for the local-only
+boundary, provider limitations, credential handling, and alert-flow safeguards.
+
 ## Roadmap for real-world feasibility
 
 1. Mobile-first app with background check-ins, power/battery-state warnings and tested offline fallbacks.
