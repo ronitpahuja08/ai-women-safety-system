@@ -59,6 +59,18 @@ def validate_location(value):
     return {"latitude": round(lat, 5), "longitude": round(lon, 5)}
 
 
+def parse_alert_payload(payload):
+    """Accept only an explicitly confirmed alert and optional location."""
+    if not isinstance(payload, dict):
+        raise ValueError("Alert payload must be an object")
+    unexpected = set(payload) - {"confirm", "location"}
+    if unexpected:
+        raise ValueError("Alert payload contains unsupported fields")
+    if payload.get("confirm") is not True:
+        raise ValueError("Manual confirmation is required")
+    return validate_location(payload.get("location"))
+
+
 def create_alert_message(location=None):
     link = ""
     if location:
@@ -169,10 +181,7 @@ class Handler(BaseHTTPRequestHandler):
                 self.json_response(413, {"error": "Invalid request size"})
                 return
             payload = json.loads(self.rfile.read(size))
-            if not isinstance(payload, dict) or payload.get("confirm") is not True:
-                self.json_response(400, {"error": "Manual confirmation is required"})
-                return
-            location = validate_location(payload.get("location"))
+            location = parse_alert_payload(payload)
             settings = configured_sms()
         except (ValueError, TypeError, json.JSONDecodeError) as error:
             self.json_response(400, {"error": str(error)})

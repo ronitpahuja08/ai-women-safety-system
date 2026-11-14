@@ -25,6 +25,14 @@ class SafetyPrototypeTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 app.validate_location(value)
 
+    def test_alert_payload_requires_explicit_minimal_confirmation(self):
+        self.assertEqual(app.parse_alert_payload({"confirm": True}), None)
+        self.assertEqual(app.parse_alert_payload({"confirm": True, "location": {"latitude": 0, "longitude": 0}}),
+                         {"latitude": 0, "longitude": 0})
+        for payload in ({}, {"confirm": False}, {"confirm": True, "note": "extra"}, []):
+            with self.assertRaises(ValueError):
+                app.parse_alert_payload(payload)
+
     def test_message_includes_map_link_when_authorized(self):
         self.assertIn("maps.google.com/?q=28.6,77.2",
                       app.create_alert_message({"latitude": 28.6, "longitude": 77.2}))
