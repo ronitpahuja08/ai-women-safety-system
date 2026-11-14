@@ -9,7 +9,12 @@ async function checkMode() {
   try {
     const response = await fetch('/api/status', {cache:'no-store'});
     const data = await response.json();
-    el('mode').textContent = data.sms_configured ? 'SMS provider configured' : 'DEMO MODE — NO SMS';
+    const labels = {
+      configured: 'SMS provider configured',
+      demo: 'DEMO MODE — NO SMS',
+      misconfigured: 'SMS unavailable — check private server settings'
+    };
+    el('mode').textContent = labels[data.mode] || 'OFFLINE — NO SMS';
   } catch (_) { el('mode').textContent = 'OFFLINE — NO SMS'; }
 }
 async function getLocation() {
