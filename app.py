@@ -17,11 +17,24 @@ from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 ROOT = Path(__file__).resolve().parent
-PORT = int(os.environ.get("PORT", "8765"))
 ALERT_COOLDOWN_SECONDS = 60
 lock = threading.Lock()
 last_delivery_attempt = 0.0
 MAX_BYTES = 2048
+
+
+def parse_port(value):
+    """Parse an explicit unprivileged local-listener port."""
+    try:
+        port = int(value)
+    except (TypeError, ValueError) as error:
+        raise ValueError("PORT must be an integer") from error
+    if not 1024 <= port <= 65535:
+        raise ValueError("PORT must be between 1024 and 65535")
+    return port
+
+
+PORT = parse_port(os.environ.get("PORT", "8765"))
 
 
 def validate_location(value):
@@ -181,8 +194,6 @@ class Handler(BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
-    if PORT < 1024 or PORT > 65535:
-        raise SystemExit("Choose an unprivileged port")
     print(f"Women Safety prototype: http://127.0.0.1:{PORT}")
     print("LOCAL DEMO. This service is not a substitute for emergency services.")
     ThreadingHTTPServer(("127.0.0.1", PORT), Handler).serve_forever()

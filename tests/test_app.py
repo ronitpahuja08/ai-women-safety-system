@@ -5,6 +5,12 @@ import app
 
 
 class SafetyPrototypeTests(unittest.TestCase):
+    def test_port_requires_unprivileged_integer(self):
+        self.assertEqual(app.parse_port("8765"), 8765)
+        for value in ("invalid", 80, 65536, None):
+            with self.assertRaises(ValueError):
+                app.parse_port(value)
+
     def test_valid_coordinates_are_rounded(self):
         self.assertEqual(app.validate_location({"latitude": 28.6139123, "longitude": 77.2090123}),
                          {"latitude": 28.61391, "longitude": 77.20901})
