@@ -110,6 +110,13 @@ class SafetyPrototypeTests(unittest.TestCase):
         self.assertEqual(headers["Referrer-Policy"], "no-referrer")
         self.assertIn("geolocation", headers["Permissions-Policy"])
 
+    def test_only_local_browser_origins_are_allowed(self):
+        self.assertTrue(app.is_allowed_local_origin(None, port=8765))
+        self.assertTrue(app.is_allowed_local_origin("http://127.0.0.1:8765", port=8765))
+        self.assertTrue(app.is_allowed_local_origin("http://localhost:8765", port=8765))
+        self.assertFalse(app.is_allowed_local_origin("https://example.com", port=8765))
+        self.assertFalse(app.is_allowed_local_origin("http://127.0.0.1:8766", port=8765))
+
 
 if __name__ == "__main__":
     unittest.main()

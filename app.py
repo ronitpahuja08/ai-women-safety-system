@@ -156,6 +156,11 @@ def security_headers(content_type, content_length):
     }
 
 
+def is_allowed_local_origin(origin, port=PORT):
+    """Allow only same-machine browser origins for the local-only prototype."""
+    return origin in (None, f"http://127.0.0.1:{port}", f"http://localhost:{port}")
+
+
 def send_sms(message, config, opener=urlopen):
     """Delivery is attempted, not guaranteed; Twilio status must be monitored."""
     uri = f"https://api.twilio.com/2010-04-01/Accounts/{config.account_sid}/Messages.json"
@@ -213,8 +218,7 @@ class Handler(BaseHTTPRequestHandler):
             return
         # Local-only by default. Check Origin to reject cross-origin browser requests.
         origin = self.headers.get("Origin")
-        expected = f"http://127.0.0.1:{PORT}"
-        if origin and origin not in (expected, f"http://localhost:{PORT}"):
+        if not is_allowed_local_origin(origin):
             self.json_response(403, {"error": "Cross-origin requests are disabled"})
             return
         if self.headers.get("Content-Type", "").split(";", 1)[0].strip().lower() != "application/json":
