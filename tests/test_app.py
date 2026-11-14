@@ -11,6 +11,16 @@ class SafetyPrototypeTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 app.parse_port(value)
 
+    def test_alert_cooldown_uses_injected_monotonic_clock(self):
+        clock = [100.0]
+        cooldown = app.AlertCooldown(60, clock=lambda: clock[0])
+        self.assertTrue(cooldown.try_acquire())
+        self.assertFalse(cooldown.try_acquire())
+        clock[0] += 60
+        self.assertTrue(cooldown.try_acquire())
+        with self.assertRaises(ValueError):
+            app.AlertCooldown(0)
+
     def test_valid_coordinates_are_rounded(self):
         self.assertEqual(app.validate_location({"latitude": 28.6139123, "longitude": 77.2090123}),
                          {"latitude": 28.61391, "longitude": 77.20901})

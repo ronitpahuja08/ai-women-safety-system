@@ -19,8 +19,6 @@ from urllib.request import Request, urlopen
 
 ROOT = Path(__file__).resolve().parent
 ALERT_COOLDOWN_SECONDS = 60
-lock = threading.Lock()
-last_delivery_attempt = 0.0
 MAX_BYTES = 2048
 
 
@@ -30,6 +28,26 @@ class SmsConfiguration:
     auth_token: str
     sender: str
     receiver: str
+
+
+class AlertCooldown:
+    """Thread-safe cooldown that accepts a monotonic clock for deterministic tests."""
+
+    def __init__(self, cooldown_seconds, clock=time.monotonic):
+        if cooldown_seconds <= 0:
+            raise ValueError("cooldown_seconds must be positive")
+        self.cooldown_seconds = cooldown_seconds
+        self.clock = clock
+        self.lock = threading.Lock()
+        self.last_attempt = None
+
+    def try_acquire(self):
+        with self.lock:
+            now = self.clock()
+            if self.last_attempt is not None and now - self.last_attempt < self.cooldown_seconds:
+                return False
+            self.last_attempt = now
+            return True
 
 
 def parse_port(value):
@@ -44,6 +62,7 @@ def parse_port(value):
 
 
 PORT = parse_port(os.environ.get("PORT", "8765"))
+delivery_cooldown = AlertCooldown(ALERT_COOLDOWN_SECONDS)
 
 
 def validate_location(value):
@@ -162,7 +181,6 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def do_POST(self):
-        global last_delivery_attempt
         if self.path != "/api/alerts":
             self.json_response(404, {"error": "Not found"})
             return
@@ -192,12 +210,9 @@ class Handler(BaseHTTPRequestHandler):
                                "SOS simulated locally. NO SMS or emergency service was contacted."})
             return
 
-        with lock:
-            now = time.monotonic()
-            if now - last_delivery_attempt < ALERT_COOLDOWN_SECONDS:
-                self.json_response(429, {"error": "Please wait before retrying an alert"})
-                return
-            last_delivery_attempt = now
+        if not delivery_cooldown.try_acquire():
+            self.json_response(429, {"error": "Please wait before retrying an alert"})
+            return
         try:
             result = send_sms(create_alert_message(location), settings)
             self.json_response(202, result)
