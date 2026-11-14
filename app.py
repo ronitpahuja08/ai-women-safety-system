@@ -90,6 +90,14 @@ def parse_alert_payload(payload):
     return validate_location(payload.get("location"))
 
 
+def decode_json_body(body):
+    """Decode request bytes as one UTF-8 JSON value without implicit coercion."""
+    try:
+        return json.loads(body.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise ValueError("Request body must contain valid UTF-8 JSON") from error
+
+
 def create_alert_message(location=None):
     link = ""
     if location:
@@ -217,10 +225,10 @@ class Handler(BaseHTTPRequestHandler):
             if size <= 0 or size > MAX_BYTES:
                 self.json_response(413, {"error": "Invalid request size"})
                 return
-            payload = json.loads(self.rfile.read(size))
+            payload = decode_json_body(self.rfile.read(size))
             location = parse_alert_payload(payload)
             settings = configured_sms()
-        except (ValueError, TypeError, json.JSONDecodeError) as error:
+        except (ValueError, TypeError) as error:
             self.json_response(400, {"error": str(error)})
             return
 

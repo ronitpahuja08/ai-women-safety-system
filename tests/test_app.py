@@ -43,6 +43,12 @@ class SafetyPrototypeTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 app.parse_alert_payload(payload)
 
+    def test_request_body_requires_valid_utf8_json(self):
+        self.assertEqual(app.decode_json_body(b'{"confirm": true}'), {"confirm": True})
+        for body in (b"not-json", b"\xff\xfe"):
+            with self.assertRaises(ValueError):
+                app.decode_json_body(body)
+
     def test_message_includes_map_link_when_authorized(self):
         self.assertIn("maps.google.com/?q=28.6,77.2",
                       app.create_alert_message({"latitude": 28.6, "longitude": 77.2}))
