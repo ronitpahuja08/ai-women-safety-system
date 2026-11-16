@@ -119,6 +119,8 @@ def configured_sms():
     sid, token, sender, receiver = values
     if not re.fullmatch(r"AC[0-9a-fA-F]{32}", sid):
         raise ValueError("Invalid Twilio account SID")
+    if not re.fullmatch(r"[0-9a-fA-F]{32}", token):
+        raise ValueError("Invalid Twilio authentication token")
     if not all(re.fullmatch(r"\+[1-9]\d{7,14}", phone) for phone in (sender, receiver)):
         raise ValueError("Both configured phone numbers must be E.164 format")
     return SmsConfiguration(sid, token, sender, receiver)

@@ -74,9 +74,20 @@ class SafetyPrototypeTests(unittest.TestCase):
         self.assertEqual(parse_qs(request_seen[0][0].data.decode())["Body"], ["SOS!"])
 
     def test_sms_configuration_is_immutable(self):
-        config = app.SmsConfiguration("AC" + "a" * 32, "secret", "+15551234567", "+15557654321")
+        config = app.SmsConfiguration("AC" + "a" * 32, "b" * 32, "+15551234567", "+15557654321")
         with self.assertRaises(AttributeError):
             config.sender = "+15550000000"
+
+    def test_malformed_twilio_auth_token_is_not_treated_as_configured(self):
+        import os
+        from unittest.mock import patch
+        with patch.dict(os.environ, {"TWILIO_ACCOUNT_SID": "AC" + "a" * 32,
+                                      "TWILIO_AUTH_TOKEN": "not-a-token",
+                                      "TWILIO_FROM_NUMBER": "+15551234567",
+                                      "ALERT_TO_NUMBER": "+15557654321"}, clear=True):
+            with self.assertRaisesRegex(ValueError, "authentication token"):
+                app.configured_sms()
+            self.assertEqual(app.sms_mode(), "misconfigured")
 
     def test_misconfigured_sms_is_distinguished_from_demo(self):
         import os
