@@ -50,6 +50,20 @@ class AlertCooldown:
             return True
 
 
+class RequestSizeError(ValueError):
+    """Raised when a request body is absent, malformed, or outside the safe limit."""
+
+
+def parse_request_size(value, maximum=MAX_BYTES):
+    try:
+        size = int(value)
+    except (TypeError, ValueError) as error:
+        raise RequestSizeError("Invalid request size") from error
+    if size <= 0 or size > maximum:
+        raise RequestSizeError("Invalid request size")
+    return size
+
+
 def parse_port(value):
     """Parse an explicit unprivileged local-listener port."""
     try:
@@ -227,13 +241,13 @@ class Handler(BaseHTTPRequestHandler):
             self.json_response(415, {"error": "JSON requests are required"})
             return
         try:
-            size = int(self.headers.get("Content-Length", "0"))
-            if size <= 0 or size > MAX_BYTES:
-                self.json_response(413, {"error": "Invalid request size"})
-                return
+            size = parse_request_size(self.headers.get("Content-Length"))
             payload = decode_json_body(self.rfile.read(size))
             location = parse_alert_payload(payload)
             settings = configured_sms()
+        except RequestSizeError as error:
+            self.json_response(413, {"error": str(error)})
+            return
         except (ValueError, TypeError) as error:
             self.json_response(400, {"error": str(error)})
             return

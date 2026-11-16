@@ -49,6 +49,12 @@ class SafetyPrototypeTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 app.decode_json_body(body)
 
+    def test_request_size_rejects_missing_malformed_and_oversized_bodies(self):
+        self.assertEqual(app.parse_request_size("12"), 12)
+        for value in (None, "not-a-number", "0", str(app.MAX_BYTES + 1)):
+            with self.assertRaises(app.RequestSizeError):
+                app.parse_request_size(value)
+
     def test_message_includes_map_link_when_authorized(self):
         self.assertIn("maps.google.com/?q=28.6,77.2",
                       app.create_alert_message({"latitude": 28.6, "longitude": 77.2}))
